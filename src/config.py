@@ -13,8 +13,8 @@ MOVIE_LINES_PATH = DATA_DIR / "cornell movie-dialogs corpus" / "movie_lines.txt"
 # Training
 RANDOM_STATE = 4  # preserved from the original notebook
 TEST_SIZE = 0.3
-MAX_TFIDF_FEATURES = 5000
-STOP_WORDS = "english"
+EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_BATCH_SIZE = 64
 
 # Movie-dialogue analysis
 FIGHT_CLUB_MOVIE_ID = "m348"

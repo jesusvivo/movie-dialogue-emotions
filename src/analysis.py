@@ -22,12 +22,12 @@ def split_into_thirds(items: Sequence) -> list:
 def analyze_character(
     name: str,
     lines: pd.Series,
-    vectorizer,
+    embedder,
     classifier,
     label_encoder,
 ) -> pd.DataFrame:
     """Predict an emotion for each line and assign each row a timeline bucket."""
-    emotions = predict_emotions(lines, vectorizer, classifier, label_encoder)
+    emotions = predict_emotions(lines, embedder, classifier, label_encoder)
     bucketed = split_into_thirds(list(range(len(emotions))))
     bucket = [0] * len(emotions)
     for i, indices in enumerate(bucketed):

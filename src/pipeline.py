@@ -22,9 +22,9 @@ def run_train() -> None:
     logger.info("Loading tweets from %s", config.TWEETS_CSV)
     X, y = load_tweets()
     logger.info("Training classifier on %d tweets...", len(X))
-    vectorizer, label_encoder, classifier, report = train(X, y)
+    _, label_encoder, classifier, report = train(X, y)
     print(report)
-    persist(vectorizer, label_encoder, classifier)
+    persist(label_encoder, classifier)
     logger.info("Artifacts saved to %s", config.MODELS_DIR)
 
 
@@ -33,7 +33,7 @@ def run_analyze(
     characters: tuple[str, ...] = config.FIGHT_CLUB_CHARACTERS,
 ) -> None:
     logger.info("Loading model artifacts from %s", config.MODELS_DIR)
-    vectorizer, label_encoder, classifier = load_all()
+    embedder, label_encoder, classifier = load_all()
 
     logger.info("Loading movie lines from %s", config.MOVIE_LINES_PATH)
     lines_df = load_movie_lines()
@@ -45,7 +45,7 @@ def run_analyze(
             logger.warning("No lines for %s in %s — skipping", char, movie_id)
             continue
         logger.info("Analyzing %s (%d lines)...", char, len(lines))
-        df = analyze_character(char, lines, vectorizer, classifier, label_encoder)
+        df = analyze_character(char, lines, embedder, classifier, label_encoder)
         out = config.FIGURES_DIR / f"{char.lower()}_arc.png"
         plot_character_arc(char, df, out)
         logger.info("Wrote %s", out)

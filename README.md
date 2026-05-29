@@ -16,16 +16,29 @@ After running the pipeline, `reports/figures/` contains a three-panel emotional 
 
 ## Approach
 
-- **Classifier.** TF-IDF (5 000 features, English stopwords) → LinearSVC on the Kaggle [Emotion Detection from Text](https://www.kaggle.com/datasets/pashupatigupta/emotion-detection-from-text) dataset (~40 k tweets, 13 sentiment classes).
-- **Sparse throughout.** The TF-IDF matrix is kept sparse end-to-end; LinearSVC accepts it natively. The original notebook called `.toarray()` everywhere — densifying a 28 k × 5 000 matrix per stage was a bug worth fixing during the refactor.
-- **Per-character analysis.** Filter the Cornell corpus to a movie ID, pull each character's lines, vectorise with the trained TF-IDF, predict an emotion per line.
+- **Sentence embeddings.** Each tweet (and each line of movie dialogue at inference time) is embedded into a 384-dim vector via `sentence-transformers/all-MiniLM-L6-v2`. This replaced an earlier TF-IDF baseline (see "What changed from the original" below).
+- **Classifier.** Logistic regression on the embeddings. Trained on ~28 k tweets from the Kaggle [Emotion Detection from Text](https://www.kaggle.com/datasets/pashupatigupta/emotion-detection-from-text) dataset (40 k total, 70/30 split, 13 sentiment classes — heavily imbalanced).
+- **Per-character analysis.** Filter the Cornell corpus to a movie ID, pull each character's lines, embed them with the same model, predict an emotion per line.
 - **Three-act arc.** Split each character's lines into three contiguous timeline buckets and render a top-emotions pie per act. The original notebook hardcoded the bucket boundaries per character; the refactor generalises to `N_TIMELINE_BUCKETS` (configurable).
-- **Persisted artifacts.** Vectorizer, label encoder, and classifier are joblib-dumped to `models/` so `--analyze` works without retraining.
+- **Persisted artifacts.** Label encoder and classifier are joblib-dumped to `models/` so `--analyze` works without retraining. The sentence-transformer itself is *not* pickled — its name is stored in `config.EMBEDDING_MODEL_NAME` and it reloads from the local Hugging Face cache.
+
+## Results on held-out tweets
+
+| Model | Accuracy | Weighted F1 | Macro F1 |
+| --- | --- | --- | --- |
+| TF-IDF (5 k) + LinearSVC (original baseline) | 0.31 | 0.29 | 0.18 |
+| all-MiniLM-L6-v2 + LogisticRegression (current) | **0.37** | **0.33** | 0.17 |
+
+Big classes (`neutral`, `worry`, `love`, `happiness`) gain ~5–8 F1 points each from the upgrade. Macro F1 stays flat because the four smallest classes (`anger`, `boredom`, `empty`, `enthusiasm`, each with <300 samples in a 40 k corpus) collapse to zero recall under both models — embeddings don't fix severe class imbalance.
 
 ## Known limitations
 
-- **Modest classifier accuracy.** TF-IDF + linear SVM on 13 heavily imbalanced classes hits roughly 30% accuracy on held-out tweets. Modern sentence embeddings (e.g. sentence-transformers) plus class-imbalance handling would be the obvious next step; that work is planned for a follow-up iteration.
+- **Small classes still unrecoverable.** Without targeted sampling or a different loss, the imbalanced minorities don't survive. `class_weight="balanced"` was tested and made things worse (it overcorrects when one class has ~75× the support of another).
 - **Tweet-trained / dialogue-applied.** Domain shift between tweets and movie dialogue is real. The arcs are interpretable and entertaining, not clinical.
+
+## What changed from the original notebook
+
+The first refactor mechanically extracted the original TF-IDF + LinearSVC pipeline into modules. The current model layer replaces it with sentence-transformers + LR. Architecture-wise the rest of the pipeline (data loading, per-character analysis, the three-act bucketing, persistence) is unchanged — only the embedding step and the classifier swapped. The original `.toarray()` densification bug that motivated the first cleanup is moot now: ST embeddings are inherently dense and small (384 dims).
 
 ## Get the data
 
@@ -40,14 +53,14 @@ data/
 
 ## How to run
 
-Prerequisites: Python 3.13.
+Prerequisites: Python 3.13. The sentence-transformer model (`all-MiniLM-L6-v2`, ~90 MB) downloads on first use and caches under `~/.cache/huggingface/`. Apple Silicon Macs auto-use MPS; CUDA GPUs auto-detect too.
 
 ```bash
 python3.13 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-python -m src.pipeline             # train + analyze (default)
+python -m src.pipeline             # train + analyze (default, ~30s on MPS)
 python -m src.pipeline --train     # train only — persists to models/
 python -m src.pipeline --analyze   # analyze only — loads models/, writes reports/figures/
 
@@ -64,7 +77,7 @@ movie-dialogue-emotions/
 ├── src/
 │   ├── config.py          # paths, hyperparams, movie ID & character list
 │   ├── data.py            # tweet loader + Cornell movie_lines parser
-│   ├── model.py           # TF-IDF + LabelEncoder + LinearSVC; train / persist / load / predict
+│   ├── model.py           # sentence-transformer embedder + LR; train / persist / load / predict
 │   ├── analysis.py        # split_into_thirds + analyze_character + plot_character_arc
 │   └── pipeline.py        # train(), analyze(), CLI
 ├── notebooks/
