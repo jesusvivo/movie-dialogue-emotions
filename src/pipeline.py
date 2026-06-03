@@ -42,7 +42,7 @@ def run_analyze(
     for char in characters:
         lines = get_character_lines(lines_df, movie_id, char)
         if lines.empty:
-            logger.warning("No lines for %s in %s — skipping", char, movie_id)
+            logger.warning("No lines for %s in %s, skipping", char, movie_id)
             continue
         logger.info("Analyzing %s (%d lines)...", char, len(lines))
         df = analyze_character(char, lines, embedder, classifier, label_encoder)

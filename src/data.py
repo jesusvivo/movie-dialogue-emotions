@@ -24,7 +24,7 @@ def load_movie_lines(path: Path = config.MOVIE_LINES_PATH) -> pd.DataFrame:
     """Parse `movie_lines.txt` from the Cornell Movie Dialogs Corpus.
 
     Each record has five ' +++$+++ '-separated fields. The encoding is
-    iso-8859-1 — the corpus is not utf-8 clean.
+    iso-8859-1; the corpus is not utf-8 clean.
     """
     rows = []
     with open(path, "r", encoding="iso-8859-1") as f:

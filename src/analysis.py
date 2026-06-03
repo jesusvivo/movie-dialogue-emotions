@@ -41,7 +41,7 @@ def plot_character_arc(character_name: str, emotions_df: pd.DataFrame, output_pa
     fig, axes = plt.subplots(1, config.N_TIMELINE_BUCKETS, figsize=(15, 5))
     if config.N_TIMELINE_BUCKETS == 1:
         axes = [axes]
-    fig.suptitle(f"{character_name.title()} — emotional arc through the film", fontsize=14)
+    fig.suptitle(f"{character_name.title()}: emotional arc through the film", fontsize=14)
     for i, ax in enumerate(axes):
         bucket_df = emotions_df[emotions_df["bucket"] == i]
         if bucket_df.empty:
